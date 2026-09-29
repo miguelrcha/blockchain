@@ -1,6 +1,7 @@
 package org.miguelrcha;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class BlockchainDemo {
     public static void main(String[] args) {
@@ -30,5 +31,22 @@ public class BlockchainDemo {
         blockChain.add(thirdBlock);
         System.out.println("Third block is " + thirdBlock.toString());
         System.out.println("The block chain is " + thirdBlock.toString());
+
+        //Simulate valided block chain?
+        //Chain bool isValid
+        System.out.println("Valid? " + isChainValid(blockChain));   // true
+
+        //Fraud attempt situation bool isValid
+        secondBlock.setTransitions(new String[]{"Pedro gives Lucas $60"});
+        System.out.println("Valid? " + isChainValid(blockChain));   // false
+    }
+
+    static boolean isChainValid(List<Block> chain) {
+        for (int i = 0; i < chain.size(); i++) {
+            Block current = chain.get(i);
+            if (!current.isValid()) return false;
+            if (i > 0 && !current.getPreviousHash().equals(chain.get(i - 1).getHash())) return false;
+        }
+        return true;
     }
 }
