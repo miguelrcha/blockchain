@@ -6,12 +6,19 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Block {
 
+    private static ArrayList<Block> BLOCKS = new ArrayList<>();
+
     public static final Gson blockAdaptedGson = new Gson();
-    private String[] transitions;
+
+    private static int nextId = 1;
+
+    private int id;
+    private List<Transactions> transitions;
     private long timestamp;
     private transient String hash;
     private String previousHash;
@@ -22,30 +29,92 @@ public class Block {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss.SSS")
                     .withZone(ZoneId.of("America/Sao_Paulo"));
 
+    public static void printAllBlocks() {
+        for(Block b : BLOCKS) {
+            b.print();
+            Report.log("");
+            Report.log("--------------");
+
+        }
+    }
+
+    // Checks every block from the last to the first: its own hash and the link to the previous block
+    public static boolean validate() {
+
+        Report.log("");
+        Report.log("--------------");
+        Report.log("INICIANDO VALIDAÇÃO (" + BLOCKS.size() + " blocos)");
+        Report.log("--------------");
+        int lastIndex = BLOCKS.size();
+        int currentIndex = lastIndex;
+
+        boolean success = true;
+        Block b = null;
+
+        while(currentIndex > 0) {
+            --currentIndex;
+            b = BLOCKS.get(currentIndex);
+            System.out.print("\nValidando bloco " + b.getId() + ": ");
+            boolean valid = b.hash.equals(SHA256.encode(b));
+            if(valid && currentIndex > 0) {
+                valid = b.previousHash.equals(BLOCKS.get(currentIndex - 1).hash);
+            }
+            System.out.print(valid);
+
+            if(!valid) {
+                success = false;
+                break;
+            }
+        }
+
+        Report.log("");
+
+        if(success) {
+            Report.log("------------------");
+            Report.log("VALIDAÇÃO CONCLUÍDA COM SUCESSO!");
+            Report.log("------------------");
+            Report.log("");
+        }else {
+            Report.log("------------------");
+            Report.log("VALIDAÇÃO FALHOU NO BLOCO " + b.getId());
+            Report.log("------------------");
+        }
+        return success;
+    }
+
+    private void print() {
+        System.out.println(this);
+    }
+
     @Override
     public String toString() {
         return
-                "transitions = " + Arrays.toString(transitions) +
-                ", hash = " + hash +
-                ", previousHash = " + previousHash +
-                        ", timestamp = " + FMT.format(Instant.ofEpochMilli(timestamp)) +
-                ", isValid = " + isValid;
+                "transitions = " + transitions +
+                "| hash = " + hash +
+                "| previousHash = " + previousHash + "| data = " + FMT.format(Instant.ofEpochMilli(timestamp)) +
+                "| isValid = " + isValid();
     }
 
-    public Block(String[] transitions, String previousHash) {
+    public Block(List<Transactions> transitions, String previousHash) {
         super();
+        this.id = nextId++;
         this.transitions = transitions;
         this.previousHash = previousHash;
         this.timestamp = System.currentTimeMillis();
         this.hash = SHA256.encode(this);
+        BLOCKS.add(this);
         //this.hash = Arrays.hashCode(new int[] {Arrays.hashCode(transitions), this.previousHash});
     }
 
-    public String[] getTransitions() {
+    public int getId() {
+        return id;
+    }
+
+    public List<Transactions> getTransitions() {
         return transitions;
     }
 
-    public void setTransitions(String[] transitions) {
+    public void setTransitions(List<Transactions> transitions) {
         this.transitions = transitions;
     }
 

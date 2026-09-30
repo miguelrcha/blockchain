@@ -1,52 +1,58 @@
 package org.miguelrcha;
 
+import org.miguelrcha.account.Account;
+import org.miguelrcha.account.AccountManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class BlockchainDemo {
     public static void main(String[] args) {
-        //Demonstrate a series of blocks in a chain
-        ArrayList<Block> blockChain = new ArrayList<Block>();
+        //Initial balances
+        Account pedro = AccountManager.createAccount("Pedro", 700);
+        Account miguel = AccountManager.createAccount("Miguel", 550);
+        Account lucas = AccountManager.createAccount("Lucas", 0);
+        Account marcos = AccountManager.createAccount("Marcos", 0);
+        Account terry = AccountManager.createAccount("Terry", 0);
 
         //If someone tries to fraud a transaction, the hash code will be changed, consequently
         //showing that the code was tampered with
 
-        //b1 hash=b72634bc3b5c7ade11ac68b8c9a6504488afe254c8fa4d12b91681315c5775af
-        String[] initialValues = {"Pedro has $700", "Miguel has $550 for Claude Max Plan"};
-        Block firstBlock = new Block(initialValues, "0");
-        blockChain.add(firstBlock);
-        System.out.println("First block is " + firstBlock.toString());
-        System.out.println("The block chain is " + blockChain.toString());
+        //Genesis block: no transactions, previous hash "0"
+        Block firstBlock = new Block(new ArrayList<>(), "0");
+        System.out.println("First block: " + firstBlock);
 
-        //b2 hash=a6ac98b1d75e4a58482e1646f1e7a4fc931716b61d28a2e846d7b2b483d9f7e5
-        String[] secondValues = {"Pedro gives Lucas $60", "Miguel gives Marcos $100", "Pedro gives Terry $20"};
-        Block secondBlock = new Block(secondValues, firstBlock.getHash());
-        blockChain.add(secondBlock);
-        System.out.println("Second block is " + secondBlock.toString());
-        System.out.println("The block chain is " + blockChain.toString());
+        Block secondBlock = new Block(execute(
+                new Transactions(pedro, lucas, 60),
+                new Transactions(miguel, marcos, 100),
+                new Transactions(pedro, terry, 20)), firstBlock.getHash());
+        System.out.println("Second block: " + secondBlock);
 
-        //b3 hash=4f4e7a8855451622135211ce68d896754f66d7a8a2913272b77b410428ca6d13
-        String[] thirdValues = {"Terry gives Lucas $60", "Marcos gives Pedro $90"};
-        Block thirdBlock = new Block(thirdValues, secondBlock.getHash());
-        blockChain.add(thirdBlock);
-        System.out.println("Third block is " + thirdBlock.toString());
-        System.out.println("The block chain is " + thirdBlock.toString());
+        Block thirdBlock = new Block(execute(
+                new Transactions(terry, lucas, 60),
+                new Transactions(marcos, pedro, 90)), secondBlock.getHash());
+        System.out.println("Third block: " + thirdBlock);
 
-        //Simulate valided block chain?
         //Chain bool isValid
-        System.out.println("Valid? " + isChainValid(blockChain));   // true
+        Block.validate();   // true
 
-        //Fraud attempt situation bool isValid
-        secondBlock.setTransitions(new String[]{"Pedro gives Lucas $60"});
-        System.out.println("Valid? " + isChainValid(blockChain));   // false
+        //Fraud attempt situation: change the value of an already recorded transaction
+        secondBlock.getTransitions().get(0).setTransition(6000);
+        Block.validate();   // false
     }
 
-    static boolean isChainValid(List<Block> chain) {
-        for (int i = 0; i < chain.size(); i++) {
-            Block current = chain.get(i);
-            if (!current.isValid()) return false;
-            if (i > 0 && !current.getPreviousHash().equals(chain.get(i - 1).getHash())) return false;
+    //Executes every transaction (moving the balances) and returns the accepted ones as a block's list;
+    //transactions without enough balance are rejected and left out of the block
+    static List<Transactions> execute(Transactions... transactions) {
+        List<Transactions> list = new ArrayList<>();
+        for (Transactions transaction : transactions) {
+            try {
+                transaction.execute();
+                list.add(transaction);
+            } catch (IllegalStateException e) {
+                System.out.println("Invalid: " + e.getMessage());
+            }
         }
-        return true;
+        return list;
     }
 }
